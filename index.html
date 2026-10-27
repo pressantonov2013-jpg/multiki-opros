@@ -243,6 +243,8 @@ li.gocell > .tag.go { align-self: center; min-height: 150px; border-radius: 4px;
 .toplogos img { display: block; width: auto; height: 46px; }
 .toplogos img.hex { order: 0; height: 50px; }
 .toplogos img:last-child { order: 2; }
+.toplogos:has(> img:only-child) { width: auto; }
+.toplogos:has(> img:only-child)::after { display: none; }
 .note .lead b { color: #C0321F; }
 .mega-dock { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 7; width: 100%; max-width: 480px; margin-top: 4px; }
 .mega {
@@ -593,7 +595,7 @@ function viewIntro() {
   const rot = [-2.2, 1.8, -1.2, 2.2, -1.8], pc = ['#E5412D', '#2F6BFF', '#FF8A2B', '#FFD23F', '#E5412D'];
   const tags = DATA.map((b, i) => `<li class="tag${i === 0 ? ' cur' : ''}" style="--r:${rot[i]}deg;--pc:${pc[i]}"><i class="pushpin"></i><img src="img/${BL_IMG[i]}.jpg" alt="" loading="lazy"><h3>${i + 1}. ${esc(b.title)}</h3></li>`).join('');
   return `<section class="v" aria-label="Первый экран">
-    <div class="toplogos"><img class="hex" src="img/logo.png" alt="Обрсоюз"><img src="img/soyuz.png" alt="Союзмультфильм"></div>
+    <div class="toplogos"><img class="hex" src="img/logo.png" alt="Обрсоюз"></div>
     ${title()}
     <div class="note y compact"><i class="pushpin" style="--pc:#2F6BFF"></i>
       <p class="lead"><b>28 октября</b> — Международный день анимации! Самое время вспомнить любимые мультфильмы!</p><p class="teas">${TEAS}</p></div>
