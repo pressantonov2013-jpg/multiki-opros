@@ -674,7 +674,8 @@ function viewReview() {
       <figure class="enot"><img src="img/enot.jpg" alt="Крошка Енот и Лягушонок"><figcaption><b class="lyr" id="lyr"></b><small>Песня «Улыбка» из мультфильма «Крошка Енот»</small></figcaption></figure></div>
     <details class="revbox"><summary>Посмотреть и изменить мои ответы</summary><ul class="rev">${items}</ul></details>
     <div class="qnav"><button type="button" class="nb fwd" data-copy="1">Скопировать ответы</button></div>
-    <p class="note-s">Отправка ответов будет подключена перед запуском опроса. Пока их можно скопировать.</p>
+    <p class="note-s" id="sendst">${st.sent === 'ok' ? 'Ваши ответы отправлены организаторам. Спасибо!' : st.sent === 'err' ? 'Не удалось отправить ответы. Проверьте интернет и нажмите «Отправить ещё раз».' : 'Отправляем ваши ответы…'}</p>
+    ${st.sent === 'err' ? '<div class="qnav"><button type="button" class="nb fwd" data-resend="1">Отправить ещё раз</button></div>' : ''}
     <button type="button" class="more" data-restart="1">Пройти заново</button></section>`;
 }
 
@@ -699,7 +700,7 @@ function confetti() {
 }
 function goNext() {
   const q = QS[st.i];
-  if (st.fromReview) { st.fromReview = false; st.view = 'review'; render(); scrollTop(); return; }
+  if (st.fromReview) { st.fromReview = false; st.view = 'review'; render(); scrollTop(); if (st.dirty) sendAnswers(); return; }
   const blockEnd = st.i === TOTAL - 1 || QS[st.i + 1].b !== q.b;
   if (blockEnd && !st.cele.has(q.b) && blockDone(q.b)) { st.cele.add(q.b); st.view = 'cele'; st.celeB = q.b; st.justB = q.b; render(); scrollTop(); confetti(); return; }
   if (st.i === TOTAL - 1) { st.view = 'about'; render(); scrollTop(); return; }
@@ -707,9 +708,19 @@ function goNext() {
 }
 function choose(patch) {
   if (st.busy) return;
-  const q = QS[st.i]; st.ans[q.n] = patch; st.busy = true;
+  const q = QS[st.i]; st.ans[q.n] = patch; st.busy = true; if (st.sent) st.dirty = true;
   render();                                          /* highlights the choice in its colour */
   setTimeout(() => { st.busy = false; goNext(); }, 450);
+}
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxOKzzq8dmx4qOaHTPCLRsU6Op6eHatBiGKmeG7UuWfBl97OTstMQ3NDbnFshMER7-axA/exec';
+function sendAnswers() {
+  const headers = [], values = [];
+  QS.forEach((q) => { headers.push(q.n + '. ' + q.q); const a = st.ans[q.n]; values.push(!a ? '' : a.text !== undefined ? 'Свой ответ: ' + a.text : q.opts[a.k].t); });
+  headers.push('Возраст', 'Предмет', 'Регион'); values.push(st.about.age, st.about.subj, st.about.region);
+  st.sent = 'wait'; st.dirty = false;
+  fetch(SHEET_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ headers, values }) })
+    .then(() => { st.sent = 'ok'; }, () => { st.sent = 'err'; })
+    .finally(() => { if (st.view !== 'review') return; if (st.sent === 'err') { render(); return; } const n = $('#sendst'); if (n) n.textContent = 'Ваши ответы отправлены организаторам. Спасибо!'; const r = document.querySelector('[data-resend]'); if (r) r.closest('.qnav').remove(); });
 }
 function copyAnswers() {
   let t = 'Мультфильмы глазами учителей\n';
@@ -736,9 +747,10 @@ document.addEventListener('click', (e) => {
   else if (t.dataset.cont) { if (st.celeB < DATA.length - 1) { st.i = QS.findIndex((x) => x.b === st.celeB + 1); st.view = 'quiz'; } else st.view = 'about'; render(); scrollTop(); }
   else if (t.dataset.edit !== undefined) { st.i = Number(t.dataset.edit); st.fromReview = true; st.view = 'quiz'; render(); scrollTop(); }
   else if (t.dataset.ab) { const k = t.dataset.ab, v = t.dataset.v; st.about[k] = st.about[k] === v ? '' : v; render(); }
-  else if (t.dataset.abdone) { st.view = 'review'; render(); scrollTop(); confetti(); }
+  else if (t.dataset.abdone) { st.view = 'review'; render(); scrollTop(); confetti(); if (!st.sent || st.dirty) sendAnswers(); }
+  else if (t.dataset.resend) sendAnswers();
   else if (t.dataset.copy) copyAnswers();
-  else if (t.dataset.restart) { st.ans = {}; st.page = {}; st.ownOpen = {}; st.cele = new Set(); st.about = { age: '', subj: '', region: '' }; st.i = 0; st.view = 'intro'; render(); scrollTop(); }
+  else if (t.dataset.restart) { st.sent = ''; st.dirty = false; st.ans = {}; st.page = {}; st.ownOpen = {}; st.cele = new Set(); st.about = { age: '', subj: '', region: '' }; st.i = 0; st.view = 'intro'; render(); scrollTop(); }
 });
 document.addEventListener('input', (e) => {
   if (e.target.id === 'reg') { st.about.region = e.target.value.trim(); return; }
